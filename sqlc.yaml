@@ -1,0 +1,8 @@
+version: "2"
+sql:
+  - engine: "postgresql" # postgresql, mysql, sqlite
+    schema: "sql/schema"   # hoặc thư mục chứa .sql schema
+    queries: "sql/queries"               # thư mục chứa file .sql với các query
+    gen:
+      go:
+        out: "internal/database" # thư mục đầu ra cho mã Go được tạo
