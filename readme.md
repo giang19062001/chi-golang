@@ -22,10 +22,9 @@ go build
 # run
 ./chi-golang.exe
  
-# build & run
-# ubuntu/mac
+# build & run (ubuntu/mac)
 go build && ./chi-golang.exe
-# win
+# build & run (win)
 go build; ./chi-golang.exe 
 
 

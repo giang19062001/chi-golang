@@ -11,9 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-func (apiCfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
+func (apiCfg *apiConfig) handleCreateFeed(w http.ResponseWriter, r *http.Request, user database.User) {
 	type parameter struct {
 		Name string `json:"name"`
+		Url  string `json:"url"`
 	}
 
 	// r.Body là 'body request' nhưng dưới dạng stream
@@ -28,9 +29,6 @@ func (apiCfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request
 	log.Println("params", params)
 	log.Println("&params", &params)
 
-	// ! Mặc định trong Go, tham số truyền vào hàm là copy (truyền giá trị).
-	// => nên truyền địa chỉ vào hàm thay vì bản sao để có thể thay đổi giá trị param struct ngoài hàm 'decoder.Decode()'
-	// &params là địa chỉ bộ nhớ của 'params struct'
 	// parse dữ liệu  và gán giá trị thực tế từ 'stream body request' vào vùng nhớ của 'params struct'
 	err := decoder.Decode(&params)
 	if err != nil {
@@ -40,24 +38,29 @@ func (apiCfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request
 	log.Println("params.Name", params.Name)
 	log.Println("&params.Name", &params.Name)
 
-	// r.Context() trả về context liên quan tới request này, có các thông tin:
-	// Khi client ngắt kết nối, context này được cancel
-	// Có thể dùng để timeout DB query hoặc hủy goroutine đang chạy
-	// user là i bên trong hàm CreateUser()
-	user, err := apiCfg.DB.CreateUser(r.Context(), database.CreateUserParams{
+	feed, err := apiCfg.DB.CreateFeed(r.Context(), database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 		Name:      params.Name,
+		Url:       params.Url,
+		UserID:    user.ID,
 	})
 	if err != nil {
-		responseWithErr(w, 400, fmt.Sprintf("Error creating user: %v", err))
+		responseWithErr(w, 400, fmt.Sprintf("Error creating feed: %v", err))
 		return
 	}
-	respondWithJSON(w, 201, changeStructUserToUser(user))
+	respondWithJSON(w, 201, changeStructFeedToFeed(feed))
 
 }
 
-func (apiCfg *apiConfig) handleGetUser(w http.ResponseWriter, r *http.Request, user database.User) {
-	respondWithJSON(w, 200, changeStructUserToUser(user))
+func (apiCfg *apiConfig) handleGetFeeds(w http.ResponseWriter, r *http.Request) {
+
+	feeds, err := apiCfg.DB.GetFeeds(r.Context())
+	if err != nil {
+		responseWithErr(w, 400, fmt.Sprintf("Error creating feeds: %v", err))
+		return
+	}
+	respondWithJSON(w, 201, changeStructFeedsToFeeds(feeds))
+
 }
