@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/giang19062001/chi-golang/internal/database"
+	"github.com/google/uuid"
 )
 
 type RSSFeed struct {
@@ -81,9 +84,47 @@ func scrapeFeed(db *database.Queries, wg *sync.WaitGroup, feed database.Feed) {
 		return
 	}
 
-	// log từng tiêu đề của item của feed data theo cấu trúc struct đã khai báo
+	// insert vào table 'posts'
 	for _, item := range feedData.Channel.Item {
-		log.Println("Found post ==>: ", item.Title)
+		log.Print("Title" + item.Title)
+		// chuyển đổi time: // EX: item.PubDate = 'Wed, 03 Jul 2019 00:00:00' =>  2019-07-03 00:00:00 (RFC1123Z)
+		pubAt, err := time.Parse(time.RFC1123Z, item.PubDate)
+
+		if err != nil {
+			log.Printf("cannot parse date %v with err %v", item.PubDate, err)
+			continue
+		}
+		// đảm bảo giá trị cho biến description
+		description := sql.NullString{}
+		if item.Description != "" {
+			description.String = item.Description
+			description.Valid = true // nói rằng 'description' ko bị trống, do khai báo cột này trong table không đề cập về việc NULL or NOT NULL
+		}
+
+		_, err = db.CreatePost(context.Background(), database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
+			FeedID:      feed.ID,
+			Title:       item.Title,
+			Description: description,
+			Url:         item.Link,
+			PublishedAt: pubAt,
+		})
+
+		if err != nil {
+			// ko insert vì lỗi
+			// vì url TEXT NOT NULL UNIQUE nên nếu lần lặp tiếp insert lại url này thay vì báo lỗi -> bỏ qua luôn -> không insert nó nữa
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Couldn't create post: %v", err)
+			continue
+		} else {
+			// insert
+		}
+
+		// log
 	}
 	log.Printf("------- Feed %s collected, %v posts found -------", feed.Name, len(feedData.Channel.Item))
 }

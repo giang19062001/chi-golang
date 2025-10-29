@@ -76,6 +76,9 @@ func main() {
 	v1Router.Get("/feed_follows", apiCfg.middlewareAuth(apiCfg.handleGetFeedFollows))
 	v1Router.Delete("/feed_follows/{feedFollowId}", apiCfg.middlewareAuth(apiCfg.handleDeleteFeedFollow))
 
+	// posts
+	v1Router.Get("/posts", apiCfg.middlewareAuth(apiCfg.handlerPostsGet))
+
 	router.Mount("/v1", v1Router)
 
 	// cấu hình port và router cho server
